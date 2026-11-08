@@ -56,6 +56,48 @@ Develop the host initially in Python with separate device transport, capture sto
 
 Build transport and CLI before the GUI. V0 introduces UART; V1 completes the three decoders and waveform viewer, including zoom, pan, cursors, trigger marker, and decode overlays. Keep decoder outputs separate from rendering.
 
+## FPGA acquisition (V2)
+
+The planned FPGA path is:
+
+```text
+Digital inputs → input register bank → trigger engine → FIFO / block RAM
+                                                           ↓
+PC ← USB controller / interface ← optional RLE ← external capture memory
+```
+
+The exact memory and compression ordering will be chosen during V2 design. A FIFO (first-in, first-out queue) decouples stages; block RAM is memory inside the FPGA, while SDRAM/DDR provides additional external capture storage. Each stage must preserve sample order and report overflow rather than silently dropping data.
+
+The original functional module breakdown remains the implementation guide:
+
+| Module | Responsibility |
+|---|---|
+| Top-level integration | Connect acquisition, control, memory, and transport |
+| Input sampler and sample clock | Register the parallel inputs at the configured rate |
+| Trigger engine | Evaluate edge, level, masked pattern, sequence, pulse-width, glitch, and protocol conditions in hardware |
+| Capture FIFO, circular buffer, memory controller | Retain pre/post-trigger samples and manage on-chip/external storage |
+| Optional RLE encoder | Represent repeated values as a sample and run length |
+| Control register bank | Apply configuration and expose status/counters |
+| USB interface | Transfer captures and exchange commands with the PC |
+
+For a masked-pattern trigger, compare `(sample & mask)` with the configured masked value at each sample. More complex triggers need their own state and timing tests. Hardware qualification must determine trigger latency and minimum detectable pulse widths.
+
+For RLE, eight consecutive `0x00` samples followed by four `0xFF` samples can be represented as `(0x00, 8), (0xFF, 4)`. The host must preserve the original timeline when reconstructing a capture. Alternating values may offer no compression benefit and can add overhead, so memory and USB budgets must include that case. The representation and whether compression occurs before storage or only before transfer remain V2 design decisions.
+
+## Custom-board integration (V3)
+
+The planned instrument path is:
+
+```text
+Probes → input protection → input buffers / threshold stage → FPGA
+                                                             ↕
+                                                       external memory
+                                                             ↓
+                                             control MCU / USB interface → PC
+```
+
+Choose the MCU's control role and USB data path from the validated V2 architecture; the diagram does not require all capture bytes to pass through the MCU. The front-end must account for loading of the device under test, voltage thresholds, propagation delay, and channel-to-channel skew. Qualify protection and signal integrity together with the intended probes and ground connections.
+
 ## Verification and reuse
 
 Test static levels, channel mapping, periodic signals, known sequences, trigger edges, and USB integrity. A counter or deterministic pattern is useful for detecting missing, duplicated, or reordered samples. Include valid and invalid protocol vectors and exercise SPI modes and I²C repeated starts. Decoder tests should run offline; hardware qualification requires a documented signal source and timing reference.

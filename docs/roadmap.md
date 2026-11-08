@@ -56,11 +56,48 @@ All stages are planned. Reuse V0 host components and add a separate H723 acquisi
 
 V1 is complete when all stages pass at the maximum qualified rate. The 50 MS/s target must be reported as achieved or unmet, with evidence; USB Full-Speed streaming is measured separately and does not define buffered capture speed.
 
-## V2 and V3
+## V2 — FPGA acquisition
 
-**V2 (planned):** select FPGA, memory, and transport; implement sampling and hardware triggers; qualify continuity and memory behavior; integrate the existing host interface. Evaluate deeper buffers, optional RLE, and USB 3.x. Completion requires measured capabilities, compatibility tests, and worst-case throughput results.
+All stages are **planned**: their scope is defined below, but implementation has not started. The original targets remain 8–16 or more channels, 100–200+ MS/s, deeper captures, and hardware triggers. Rates, depth, and streaming throughput require qualification on the selected hardware.
 
-**V3 (planned):** specify electrical limits and front-end protection; design and review the PCB; bring up power, clocks, memory, acquisition, and USB in stages; integrate probes and enclosure. Completion requires electrical, functional, and system qualification of the integrated instrument. Detailed milestones follow validation of the preceding versions.
+Replace the acquisition engine while preserving the host protocol, capture format, decoder interface, GUI, and user workflow where practical. See the [FPGA architecture](architecture.md#fpga-acquisition-v2) for the planned modules and data flow.
+
+| Stage | Work | Completion evidence |
+|---|---|---|
+| V2.1 | Select FPGA development board, clocking, memory, and USB transport; define resource and bandwidth budgets | Reviewed architecture, channel/rate/depth targets, interfaces, and hardware selection rationale |
+| V2.2 | Implement the input register bank, sample clock, configuration registers, and basic capture | Simulation and hardware patterns verify channel mapping, sample order, and timing constraints |
+| V2.3 | Add FIFO, circular buffering, on-chip block RAM, and external SDRAM/DDR where required | Memory tests and repeated captures verify capture depth, wraparound, continuity, and explicit overflow reporting |
+| V2.4 | Implement hardware edge, level, masked-pattern, and sequence triggers, with pre/post-trigger capture | Deterministic vectors verify trigger selection and sample position, including events at buffer boundaries |
+| V2.5 | Extend triggers to pulse width, glitches, and protocol-aware conditions | Defined detection limits and valid/invalid test sequences verify each advertised trigger mode |
+| V2.6 | Evaluate optional RLE compression and host reconstruction | Reconstructed samples and timing match raw input for constant, changing, and incompressible patterns; resource/throughput costs are measured |
+| V2.7 | Integrate USB transport and existing host capabilities, file handling, CLI, decoders, and GUI | Captures work through the existing workflow; transfer integrity, disconnect recovery, and compatibility tests pass |
+| V2.8 | Qualify acquisition, memory, triggers, and transport together | Published maximum lossless rate, depth, trigger accuracy, streaming limits, and worst-case traffic results |
+
+For V2.1 and V2.7, evaluate USB 3.x and a suitable dedicated controller; FX3/FX3S and FPGA interface options from the original plan remain candidates, not selected parts. PCIe remains a later experiment. At 100 MS/s, raw acquisition generates 100 MB/s for 8 channels or 200 MB/s for 16 channels, before transport overhead. Budget buffered download and continuous streaming separately.
+
+RLE is optional: record whether it is implemented or deferred and why. Compression gains must not be required to sustain the advertised worst-case capture mode. Hardware triggers and deeper buffering remain core V2 goals.
+
+V2 completion requires the core stages, a documented RLE decision, host compatibility evidence, and measured results against the original targets. Report targets as achieved or unmet rather than presenting them as guaranteed specifications.
+
+## V3 — Integrated custom board
+
+All stages are **planned**. Integrate the validated acquisition architecture into an instrument with protected inputs, external memory, USB connectivity, probes, and an enclosure. Board design follows validation of the preceding prototypes.
+
+| Stage | Work | Completion evidence |
+|---|---|---|
+| V3.1 | Define channel count, bandwidth, electrical limits, power budget, connectors, and mechanical requirements | Reviewed system specification tied to the V2 results and intended use |
+| V3.2 | Design input buffering, thresholds, and protection; evaluate 1.8/2.5/3.3/5 V logic support | Front-end review and prototype measurements establish loading, thresholds, propagation delay, channel skew, and allowed input conditions |
+| V3.3 | Integrate FPGA, control MCU where required, external memory, clocks, power rails, USB-C, and the qualified USB 3.x transport | Reviewed schematics, component selection, power sequencing, and programming/debug connections |
+| V3.4 | Lay out and review the PCB, including input matching, memory and USB routing, grounding, decoupling, and protection placement | Layout review covers controlled impedance, timing, return paths, manufacturability, and mechanical fit before fabrication |
+| V3.5 | Bring up the assembled board in stages: power, clocks, debug, memory, acquisition, and USB | Measurements and subsystem tests pass before complete-system operation |
+| V3.6 | Integrate probes, ground connections, connectors, and enclosure | Fit and usability checks pass; acquisition remains within limits using the intended probes and cabling |
+| V3.7 | Qualify the integrated instrument and host workflow | Electrical, protection, functional, timing, and sustained-operation results are documented with supported configurations and limitations |
+
+The front-end study includes high input impedance, programmable/selectable thresholds, comparators where appropriate, series resistance, overvoltage and electrostatic discharge (ESD) protection, termination options, and matched channel delays. Supported voltage levels become specifications only after validation.
+
+PCB review must cover differential USB routing, any chosen ULPI interface, memory timing, FPGA power rails, clock integrity, ground return paths, ESD placement, and connector mechanics. USB-C describes the connector; transport performance comes from the selected and qualified USB implementation.
+
+V3 is complete when the integrated hardware meets its reviewed specification and reproduces qualified captures through the existing host software, with probe, electrical, and operating limits documented.
 
 ## Evidence to record
 
